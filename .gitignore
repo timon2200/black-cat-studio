@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+*$py.class
+.DS_Store
+*.blend1
+*.blend2
+*.assembling
+black_cat_director/_studio_paths.json
+database/black_cat_animated_source.blend
+database/cat_assets_library.blend
+black_cat_studio.blend
+previews/

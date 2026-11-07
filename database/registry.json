@@ -1,0 +1,341 @@
+{
+  "studio_version": "2.0.0",
+  "character_roster": {
+    "CAT_HERO": {
+      "id": "CAT_HERO",
+      "name": "Black Cat (Quadruped Rig + 3D Fur Coat)",
+      "template_root": "Black Cat Animated",
+      "armature": "cat",
+      "body_mesh": "feline ",
+      "fur_mesh": "BaseColor_white mail lion_lion 9(making mail hair )_new hai.063",
+      "fur_particle_modifier": "PS_Cat_FurCoat",
+      "fur_viewport_default": false,
+      "fur_render_default": true,
+      "rest_height_m": 0.4294,
+      "rest_length_m": 0.8705,
+      "ref_stride_len_m": 0.4267,
+      "default_look": "PURE_BLACK"
+    }
+  },
+  "animations": [
+    {
+      "name": "Cat_Walk (1_32)",
+      "frame_start": 1,
+      "frame_end": 32,
+      "duration_frames": 31,
+      "category": "LOCOMOTION",
+      "is_locomotion": true,
+      "speed_mps": 0.32,
+      "default_role": "FILL",
+      "label": "Walk Cycle (Steady)"
+    },
+    {
+      "name": "Cat_ slow Run (1_12)",
+      "frame_start": 1,
+      "frame_end": 12,
+      "duration_frames": 11,
+      "category": "LOCOMOTION",
+      "is_locomotion": true,
+      "speed_mps": 0.78,
+      "default_role": "FILL",
+      "label": "Trot / Slow Run"
+    },
+    {
+      "name": "Cat _Run (1_16)",
+      "frame_start": 1,
+      "frame_end": 16,
+      "duration_frames": 15,
+      "category": "LOCOMOTION",
+      "is_locomotion": true,
+      "speed_mps": 1.35,
+      "default_role": "FILL",
+      "label": "Gallop / Fast Run"
+    },
+    {
+      "name": "Cat _Jump  (1_27)",
+      "frame_start": 1,
+      "frame_end": 27,
+      "duration_frames": 26,
+      "category": "LOCOMOTION",
+      "is_locomotion": true,
+      "speed_mps": 0.85,
+      "default_role": "FIXED",
+      "label": "Jump / Leap Arc"
+    },
+    {
+      "name": "Cat sitting (1-24)",
+      "frame_start": 1,
+      "frame_end": 24,
+      "duration_frames": 23,
+      "category": "TRANSITION",
+      "is_locomotion": false,
+      "speed_mps": 0.0,
+      "default_role": "FIXED",
+      "label": "Sit Down (Stand -> Sit)"
+    },
+    {
+      "name": "Cat Standing  (1-24)",
+      "frame_start": 1,
+      "frame_end": 24,
+      "duration_frames": 23,
+      "category": "TRANSITION",
+      "is_locomotion": false,
+      "speed_mps": 0.0,
+      "default_role": "FIXED",
+      "label": "Stand Up (Sit -> Stand)"
+    },
+    {
+      "name": "Cat sitting on belly (1_32)",
+      "frame_start": 1,
+      "frame_end": 32,
+      "duration_frames": 31,
+      "category": "TRANSITION",
+      "is_locomotion": false,
+      "speed_mps": 0.0,
+      "default_role": "FIXED",
+      "label": "Lie Down on Belly"
+    },
+    {
+      "name": "Cat Standing From belly( 1_32)",
+      "frame_start": 1,
+      "frame_end": 32,
+      "duration_frames": 31,
+      "category": "TRANSITION",
+      "is_locomotion": false,
+      "speed_mps": 0.0,
+      "default_role": "FIXED",
+      "label": "Get Up from Belly"
+    },
+    {
+      "name": "Cat stand up (1_168)",
+      "frame_start": 1,
+      "frame_end": 168,
+      "duration_frames": 167,
+      "category": "TRANSITION",
+      "is_locomotion": false,
+      "speed_mps": 0.0,
+      "default_role": "FIXED",
+      "label": "Stretch & Stand Up"
+    },
+    {
+      "name": "Cat_Seated_Paw_Lick (1_104)",
+      "frame_start": 1,
+      "frame_end": 104,
+      "duration_frames": 103,
+      "category": "GROOMING",
+      "is_locomotion": false,
+      "speed_mps": 0.0,
+      "default_role": "FIXED",
+      "label": "Seated Paw Lick & Grooming"
+    },
+    {
+      "name": "Cat_Seated_Paw_Reach (1_72)",
+      "frame_start": 1,
+      "frame_end": 72,
+      "duration_frames": 71,
+      "category": "INTERACTION",
+      "is_locomotion": false,
+      "speed_mps": 0.0,
+      "default_role": "FIXED",
+      "label": "Seated Paw Reach / Tap"
+    },
+    {
+      "name": "Cat_Seated_Look_Around (1_120)",
+      "frame_start": 1,
+      "frame_end": 120,
+      "duration_frames": 119,
+      "category": "STATIONARY",
+      "is_locomotion": false,
+      "speed_mps": 0.0,
+      "default_role": "FIXED",
+      "label": "Seated Head Look Around"
+    },
+    {
+      "name": "Cat idle (1_143)",
+      "frame_start": 1,
+      "frame_end": 143,
+      "duration_frames": 142,
+      "category": "STATIONARY",
+      "is_locomotion": false,
+      "speed_mps": 0.0,
+      "default_role": "FIXED",
+      "label": "Standing Idle (Breathing & Tail Sway)"
+    },
+    {
+      "name": "Cat Idle seated (1_144)",
+      "frame_start": 1,
+      "frame_end": 144,
+      "duration_frames": 143,
+      "category": "STATIONARY",
+      "is_locomotion": false,
+      "speed_mps": 0.0,
+      "default_role": "FIXED",
+      "label": "Seated Idle (Calm Observation)"
+    },
+    {
+      "name": "Cat licking (1-143)",
+      "frame_start": 1,
+      "frame_end": 143,
+      "duration_frames": 142,
+      "category": "GROOMING",
+      "is_locomotion": false,
+      "speed_mps": 0.0,
+      "default_role": "FIXED",
+      "label": "Standing Fur Lick"
+    },
+    {
+      "name": "Cat scratching (1-143)",
+      "frame_start": 1,
+      "frame_end": 143,
+      "duration_frames": 142,
+      "category": "GROOMING",
+      "is_locomotion": false,
+      "speed_mps": 0.0,
+      "default_role": "FIXED",
+      "label": "Scratch Ear with Hind Leg"
+    },
+    {
+      "name": "Cat yawning (1_168)",
+      "frame_start": 1,
+      "frame_end": 168,
+      "duration_frames": 167,
+      "category": "STATIONARY",
+      "is_locomotion": false,
+      "speed_mps": 0.0,
+      "default_role": "FIXED",
+      "label": "Yawn & Stretch"
+    },
+    {
+      "name": "Cat Meerkating (1_168)",
+      "frame_start": 1,
+      "frame_end": 168,
+      "duration_frames": 167,
+      "category": "STATIONARY",
+      "is_locomotion": false,
+      "speed_mps": 0.0,
+      "default_role": "FIXED",
+      "label": "Stand on Hind Legs (Meerkat Pose)"
+    },
+    {
+      "name": "Cat Angry (1_25)",
+      "frame_start": 1,
+      "frame_end": 25,
+      "duration_frames": 24,
+      "category": "REACTION",
+      "is_locomotion": false,
+      "speed_mps": 0.0,
+      "default_role": "FIXED",
+      "label": "Arched Back / Hiss"
+    },
+    {
+      "name": "cat meow FA (1_48)",
+      "frame_start": 1,
+      "frame_end": 48,
+      "duration_frames": 47,
+      "category": "FACIAL",
+      "is_locomotion": false,
+      "speed_mps": 0.0,
+      "default_role": "FIXED",
+      "label": "Meow Vocalization"
+    },
+    {
+      "name": "Cat drinking (1-99)",
+      "frame_start": 1,
+      "frame_end": 99,
+      "duration_frames": 98,
+      "category": "STATIONARY",
+      "is_locomotion": false,
+      "speed_mps": 0.0,
+      "default_role": "FIXED",
+      "label": "Drink Water"
+    },
+    {
+      "name": "Cat eating (1_143)",
+      "frame_start": 1,
+      "frame_end": 143,
+      "duration_frames": 142,
+      "category": "STATIONARY",
+      "is_locomotion": false,
+      "speed_mps": 0.0,
+      "default_role": "FIXED",
+      "label": "Eat from Bowl"
+    },
+    {
+      "name": "Cat seated on belly (1_125) ",
+      "frame_start": 1,
+      "frame_end": 125,
+      "duration_frames": 124,
+      "category": "SLEEP",
+      "is_locomotion": false,
+      "speed_mps": 0.0,
+      "default_role": "FIXED",
+      "label": "Resting on Belly (Loaf)"
+    },
+    {
+      "name": "Cat sleeping on belly (1_143)",
+      "frame_start": 1,
+      "frame_end": 143,
+      "duration_frames": 142,
+      "category": "SLEEP",
+      "is_locomotion": false,
+      "speed_mps": 0.0,
+      "default_role": "FIXED",
+      "label": "Sleeping on Belly"
+    },
+    {
+      "name": "Cat sleeping On side  (1_143)",
+      "frame_start": 1,
+      "frame_end": 143,
+      "duration_frames": 142,
+      "category": "SLEEP",
+      "is_locomotion": false,
+      "speed_mps": 0.0,
+      "default_role": "FIXED",
+      "label": "Sleeping on Side"
+    },
+    {
+      "name": "Cat sleeping On back (1_143)",
+      "frame_start": 1,
+      "frame_end": 143,
+      "duration_frames": 142,
+      "category": "SLEEP",
+      "is_locomotion": false,
+      "speed_mps": 0.0,
+      "default_role": "FIXED",
+      "label": "Sleeping on Back"
+    },
+    {
+      "name": "Cat Rolling in sleep (1_48) ",
+      "frame_start": 1,
+      "frame_end": 48,
+      "duration_frames": 47,
+      "category": "SLEEP",
+      "is_locomotion": false,
+      "speed_mps": 0.0,
+      "default_role": "FIXED",
+      "label": "Roll Over in Sleep"
+    },
+    {
+      "name": "FP Feline eye closed ",
+      "frame_start": 0,
+      "frame_end": 20,
+      "duration_frames": 20,
+      "category": "FACIAL",
+      "is_locomotion": false,
+      "speed_mps": 0.0,
+      "default_role": "FIXED",
+      "label": "Eyes Closed Pose"
+    },
+    {
+      "name": "FP feline Idle face ",
+      "frame_start": 0,
+      "frame_end": 1,
+      "duration_frames": 1,
+      "category": "FACIAL",
+      "is_locomotion": false,
+      "speed_mps": 0.0,
+      "default_role": "FIXED",
+      "label": "Neutral Facial Pose"
+    }
+  ]
+}
