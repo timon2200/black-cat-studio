@@ -235,6 +235,80 @@ def ensure_3d_fur_coat_on_body_mesh(body_obj) -> bool:
         b_mesh.materials.append(mat_hair)
     hair_mat_slot = [i + 1 for i, m in enumerate(b_mesh.materials) if m and m.name == "CAT_3D_Fur_Coat_Mat"][0]
 
+    # Ensure outer cornea dome (256 polys/eye) is transparent with wet catchlight so it never occludes
+    # the inner golden-green iris & slit pupil dish (64 polys/eye)
+    if "UVChannel_1" in b_mesh.uv_layers and ("DEF-eye.L" in body_obj.vertex_groups or "DEF-eye.R" in body_obj.vertex_groups):
+        mat_iris = bpy.data.materials.get("CAT_Eye_Iris_Mat")
+        if not mat_iris:
+            mat_iris = bpy.data.materials.new("CAT_Eye_Iris_Mat")
+            mat_iris.use_nodes = True
+            nt_i = mat_iris.node_tree
+            nt_i.nodes.clear()
+            out_i = nt_i.nodes.new("ShaderNodeOutputMaterial")
+            bsdf_i = nt_i.nodes.new("ShaderNodeBsdfPrincipled")
+            bsdf_i.inputs["Roughness"].default_value = 0.55
+            if "Specular IOR Level" in bsdf_i.inputs:
+                bsdf_i.inputs["Specular IOR Level"].default_value = 0.12
+            if "Coat Weight" in bsdf_i.inputs:
+                bsdf_i.inputs["Coat Weight"].default_value = 0.0
+            if "Emission Strength" in bsdf_i.inputs:
+                bsdf_i.inputs["Emission Strength"].default_value = 0.55
+            uv_node = nt_i.nodes.new("ShaderNodeUVMap")
+            uv_node.uv_map = "UVChannel_1"
+            img_bc = next((im for im in bpy.data.images if "BaseColor_Cat 2 B_Cat 34" in im.name), None)
+            img_em = next((im for im in bpy.data.images if "Emissive_Cat 2 B_Cat 34" in im.name), None)
+            if img_bc:
+                tex_bc = nt_i.nodes.new("ShaderNodeTexImage")
+                tex_bc.image = img_bc
+                nt_i.links.new(uv_node.outputs["UV"], tex_bc.inputs["Vector"])
+                nt_i.links.new(tex_bc.outputs["Color"], bsdf_i.inputs["Base Color"])
+            if img_em and "Emission Color" in bsdf_i.inputs:
+                tex_em = nt_i.nodes.new("ShaderNodeTexImage")
+                tex_em.image = img_em
+                nt_i.links.new(uv_node.outputs["UV"], tex_em.inputs["Vector"])
+                nt_i.links.new(tex_em.outputs["Color"], bsdf_i.inputs["Emission Color"])
+            nt_i.links.new(bsdf_i.outputs["BSDF"], out_i.inputs["Surface"])
+
+        mat_cornea = bpy.data.materials.get("CAT_Cornea_Clear_Mat")
+        if not mat_cornea:
+            mat_cornea = bpy.data.materials.new("CAT_Cornea_Clear_Mat")
+            mat_cornea.use_nodes = True
+            mat_cornea.surface_render_method = "BLENDED"
+            nt_c = mat_cornea.node_tree
+            nt_c.nodes.clear()
+            out_c = nt_c.nodes.new("ShaderNodeOutputMaterial")
+            bsdf_c = nt_c.nodes.new("ShaderNodeBsdfPrincipled")
+            bsdf_c.inputs["Base Color"].default_value = (0.0, 0.0, 0.0, 1.0)
+            bsdf_c.inputs["Roughness"].default_value = 0.015
+            bsdf_c.inputs["Alpha"].default_value = 0.03
+            if "Specular IOR Level" in bsdf_c.inputs:
+                bsdf_c.inputs["Specular IOR Level"].default_value = 0.45
+            nt_c.links.new(bsdf_c.outputs["BSDF"], out_c.inputs["Surface"])
+
+        if "CAT_Eye_Iris_Mat" not in [m.name for m in b_mesh.materials if m]:
+            b_mesh.materials.append(mat_iris)
+        if "CAT_Cornea_Clear_Mat" not in [m.name for m in b_mesh.materials if m]:
+            b_mesh.materials.append(mat_cornea)
+
+        iris_slot = [i for i, m in enumerate(b_mesh.materials) if m and m.name == "CAT_Eye_Iris_Mat"][0]
+        cornea_slot = [i for i, m in enumerate(b_mesh.materials) if m and m.name == "CAT_Cornea_Clear_Mat"][0]
+        uv1_data = b_mesh.uv_layers["UVChannel_1"].data
+
+        eye_vert_ids = set()
+        for vg_name in ("DEF-eye.L", "DEF-eye.R"):
+            vg = body_obj.vertex_groups.get(vg_name)
+            if vg:
+                vg_i = vg.index
+                for v in b_mesh.vertices:
+                    if any(g.group == vg_i and g.weight > 0.1 for g in v.groups):
+                        eye_vert_ids.add(v.index)
+
+        if eye_vert_ids:
+            for p in b_mesh.polygons:
+                if all(v in eye_vert_ids for v in p.vertices):
+                    u, v = uv1_data[p.loop_indices[0]].uv[:]
+                    p.material_index = iris_slot if (u < 0.25 and v > 0.50) else cornea_slot
+
     ps_mod = body_obj.modifiers.get(CAT_FUR_MODIFIER_NAME)
     if not ps_mod:
         for mod in body_obj.modifiers:
