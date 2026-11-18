@@ -4,6 +4,37 @@ This document provides complete technical instructions for AI coding and 3D anim
 
 ---
 
+## Silvestar (v2.1)
+
+`silvestar_studio.blend` (repo root, shipped as `.part01` + `.part02`, reassembled by `install_cat_studio.py` or lazily by
+`silvestar.get_silvestar_blend_path()`) holds collection `SILVESTAR` (`CTRL_Silvestar` → `ARM_Silvestar` →
+`MESH_Silvestar_Body` with `PS_Silvestar_FurCoat`, `MESH_Silvestar_Fur`) plus 8 Silvestar actions and the 36 stock cat actions.
+Module: `black_cat_director/silvestar.py`. Requires Blender 5.0+ (layered actions; saved from 5.3).
+
+- **Actions** (`SILVESTAR_CATALOG`, category `SILVESTAR`, all stationary/`FIXED`, 24 fps, frames start at 1):
+  `Cat_Silvestar_Sjedi_Idle_Loop` (285 f loop), `Cat_Silvestar_Sjedi_Prica_Loop` (287 f loop),
+  `Cat_Silvestar_Lizanje_Loop` (90 f loop), `Cat_Silvestar_Lizanje_Sok_Sjedanje` (164 f),
+  `Cat_Silvestar_Skok_Na_Podest` (97 f, root motion on bone `root`, anchored at the END: starts at (−0.33, −0.97, −1.34) m
+  relative to the controller, ends at 0), `Cat_Silvestar_Poluga` (97 f), `Cat_Silvestar_Master_Izvedba` (760 f),
+  `Cat_Silvestar02_Obilazak_Kabine` (476 f, root motion anchored at the START, ends at (3.08, −0.50, −0.05) m).
+  Loop actions have frame N+1 equal to frame 1 (`action.frame_end` = loop length + 1, `use_cyclic`), so NLA `repeat` is seamless.
+- **API:** `cd.append_silvestar(location, rotation_z_deg)`, `cd.find_silvestar()`, `cd.ensure_silvestar_actions_loaded()`,
+  `cd.list_silvestar_presets()`, `cd.apply_silvestar_preset(ctrl, "IDLE" | "PRICA" | "IDLE_PRICA_IDLE" | "LIZANJE" |
+  "LIZANJE_SOK_IDLE" | "PREDSTAVA" | "SKOK_IDLE" | "SKOK_PRICA_POLUGA" | "POLUGA" | "MASTER" | "S02_OBILAZAK")`.
+  Operators: `cat_director.silvestar_append`, `cat_director.silvestar_load_clips`, `cat_director.silvestar_preset(preset_id=...)`.
+- `apply_silvestar_preset` detaches the cat from its curve, builds the stack with `rebuild_cat_nla_sequence_from_specs`
+  and removes the `CAT_Stray_Biomechanics` layer (the clips already contain breathing, blinks and tail). Pass
+  `keep_stray_layer=True` to keep it. The clips work on any cat spawned by `cd.spawn_cat` (same rig, same bone names).
+- **Do not** re-bake or simplify the Silvestar actions; they are flattened from the production NLA stack and verified
+  against it (`database/silvestar_clips.json`, max 0.4 mm on Silvestar 01). To rebuild from the production files:
+  `tools/extract_silvestar_samples.py` (run inside the S1 scene) → `tools/build_silvestar_studio.py`.
+- Custom sequences: use `cd.set_cat_nla_sequence(ctrl, [...], sync_curve=False)` with `"mode": "FIXED"`. Give loops a
+  `repeat` > 1; use `blend` 10–12 frames between seated clips and 3 between `Lizanje_Loop` and `Lizanje_Sok_Sjedanje`
+  (the second continues the first on the same frame).
+- Test: `Blender -b --factory-startup -P tests/test_silvestar.py`.
+
+---
+
 ## 1. Architecture & Directory Structure
 
 ```

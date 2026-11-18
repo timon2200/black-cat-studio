@@ -394,6 +394,13 @@ CAT_ACTION_CATALOG = {
     },
 }
 
+# Silvestar (Čarobni lift 2026): finalne animacije, prve u pickeru
+try:
+    from .silvestar import SILVESTAR_CATALOG as _SILVESTAR_CATALOG
+    CAT_ACTION_CATALOG = {**_SILVESTAR_CATALOG, **CAT_ACTION_CATALOG}
+except Exception as _e:  # pragma: no cover
+    print(f"[BlackCatStudio] Silvestar catalog not loaded: {_e}")
+
 # General-purpose NLA sequence presets
 PRESET_WALK_STOP_GROOM_WALK = [
     {"action": "Cat idle (1_143)", "repeat": 0.35, "speed": 1.0, "blend": 0, "mode": "FIXED"},

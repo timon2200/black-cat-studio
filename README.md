@@ -1,4 +1,4 @@
-# Black Cat Animation Director Studio v2.0 (`black_cat_director`)
+# Black Cat Animation Director Studio v2.1 + Silvestar (`black_cat_director`)
 
 Standalone, general-purpose **Blender 4.x / 5.x Add-on & Python SDK** for animating rigged quadruped black cats with:
 1. **180,000-Strand 3D Feline Fur Coat (`PS_Cat_FurCoat`)** — 5,000 combed guide hairs $\times$ 36 interpolated children rendered as 3D `STRIP` strands (`VG_Fur_Density` & `VG_Fur_Length`), paired with a **Matte-Velvet Jet-Black Undercoat**, **Glossy Golden-Green Eye Mask**, and dedicated **Whiskers Shader (`CAT_Whiskers_Mat`)**.
@@ -6,6 +6,119 @@ Standalone, general-purpose **Blender 4.x / 5.x Add-on & Python SDK** for animat
 3. **Interactive 3D Curve Drawing & Zero-Slip Curve Locomotion** — Draw a 3D Bezier path directly on any surface (`1. Draw Curve Path` -> `2. Finish & Follow`) or generate preset curves (`S-Curve`, `Circle Loop`, `Ledge Jump`). Walking and running animations (`Cat_Walk`, `Cat_ slow Run`, `Cat _Run`, `Cat _Jump`) advance along the curve at their exact biomechanical stride speed (`0.32 m/s`, `0.78 m/s`, `1.35 m/s` scaled by character scale and playback speed) so the cat's paws **never drag or slide**, while stationary animations (`Idle`, `Sit`, `Paw Lick`, `Look Around`, `Meow`, `Sleep`) hold their exact curve position (`0.00 m/s`).
 4. **Multi-Clip NLA Animation Stacker, Strip Inspector & Native Blender NLA Editor Sync** — Stack, reorder, duplicate, delete, crossfade, and edit strip repeats (`FILL` auto-stretch to curve length vs `FIXED` repeat counts) directly from the plugin N-Panel, or click **`Open NLA Editor`** to edit strips in Blender's NLA Editor and **`Sync Manual NLA Edits`** to re-solve zero-slip curve locomotion.
 5. **Stray-Style Procedural Quadruped Biomechanics (`CAT_Stray_Biomechanics`)** — Non-destructive `COMBINE` NLA layer that bends the cat's spine (`spine_fk`, `chest`, `neck`, `head`) into curve turns with 6–7 frames of head anticipation, counter-steers the tail (`tail_master.001`) as a dynamic rudder, and adds natural feline eyelid blinks (`FP Feline eye closed `), asymmetric ear micro-twitches (`ear.L`, `ear.R`), and chest breathing.
+
+---
+
+## Silvestar Studio (v2.1): mačak iz „Čarobnog lifta” s gotovim animacijama
+
+Silvestar je crni mačak iz imerzivne vožnje **Čarobni lift, Advent u Varaždinu 2026.** U repozitoriju je datoteka
+**`silvestar_studio.blend`** (u Gitu kao `silvestar_studio.blend.part01` + `.part02`, instalacija ih sama spoji):
+
+- kolekcija **`SILVESTAR`**: `CTRL_Silvestar` (kontroler, njega pomičeš), `ARM_Silvestar` (Rigify rig, 782 kosti),
+  `MESH_Silvestar_Body` (tijelo, brkovi, krzno od 180.000 vlasi samo u renderu), `MESH_Silvestar_Fur`,
+- sve finalne animacije iz vožnje kao obične Blender akcije (jedna akcija = jedan klip, ključevi na kontrolama riga),
+- 36 ostalih mačjih akcija plugina (hod, trk, spavanje, mijauk …),
+- mala studijska scena (kolekcija `SILVESTAR_Scena`: podest, pod, tri svjetla, kamera) i ugrađen plugin.
+
+![Silvestar](docs/silvestar_pregled.jpg)
+
+### Klipovi (u izborniku **Clip** nose oznaku `[SILV]`)
+
+| Akcija | Što radi | Trajanje |
+|---|---|---|
+| `Cat_Silvestar_Sjedi_Idle_Loop` | sjedi, diše, maše repom; **petlja bez šava** | 285 kadrova (11,9 s) |
+| `Cat_Silvestar_Sjedi_Prica_Loop` | sjedi i priča u kameru (glava, čeljust, rep); **petlja** | 287 kadrova (12,0 s) |
+| `Cat_Silvestar_Lizanje_Loop` | leži na boku i liže se, tijelo diše; **petlja** | 90 kadrova (3,8 s) |
+| `Cat_Silvestar_Lizanje_Sok_Sjedanje` | liže se, trgne se (šok), bulji, žmirne, sjedne | 164 kadra (6,8 s) |
+| `Cat_Silvestar_Skok_Na_Podest` | čučne, skoči 1,34 m na podest, okrene se i sjedne | 97 kadrova (4,0 s) |
+| `Cat_Silvestar_Poluga` | sjedeći gurne polugu lijevom šapom | 97 kadrova (4,0 s) |
+| `Cat_Silvestar_Master_Izvedba` | cijela izvedba iz vožnje: lizanje, šok, sjedanje, govor, poluga | 760 kadrova (31,7 s) |
+| `Cat_Silvestar02_Obilazak_Kabine` | drugi mačak: sjedi i gleda, ustane, hoda po podu s jednim skokom (prijeđe 3,1 m) | 476 kadrova (19,8 s) |
+
+Sve je na 24 sličice u sekundi. Petlje se ponavljaju bez skoka (zadnji kadar jednak je prvom, izmjereno 0,000 mm).
+Klipovi su izvađeni iz produkcijske scene spajanjem NLA slojeva; položaj kostiju se s izvornikom poklapa unutar 0,4 mm
+(`database/silvestar_clips.json`). Kod drugog mačka šape su na tlu unutar 3 mm, a skočni zglob stražnjih nogu odstupa
+oko 4 cm jer izvorni rig ima isključeno rastezanje nogu.
+
+Skok je usidren na mjesto sjedenja: mačak kreće 1,34 m niže i 1,03 m ispred kontrolera, a završava točno na njemu,
+pa se nakon skoka bez pomaka nastavlja bilo koji sjedeći klip.
+
+### Gotove kombinacije (N-panel → **Black Cat Studio** → „Silvestar: gotove animacije”)
+
+Jedan klik složi kombinaciju u NLA i postavi raspon scene:
+
+| Gumb | ID za skripte | Slijed |
+|---|---|---|
+| Idle: sjedi, diše, maše repom | `IDLE` | idle petlja × 8 |
+| Priča: sjedi i priča | `PRICA` | priča petlja × 6 |
+| Idle → priča → idle | `IDLE_PRICA_IDLE` | idle, priča × 2, idle × 3 |
+| Lizanje (loop) | `LIZANJE` | lizanje × 10 |
+| Lizanje → šok → sjedne → idle | `LIZANJE_SOK_IDLE` | lizanje × 2, šok i sjedanje, idle × 4 |
+| Predstava | `PREDSTAVA` | lizanje × 2, šok, priča × 2, idle × 4 |
+| Skok na podest → idle | `SKOK_IDLE` | skok, idle × 4 |
+| Skok → priča → poluga → gleda | `SKOK_PRICA_POLUGA` | skok, priča, poluga, gleda za liftom |
+| Idle → poluga → gleda | `POLUGA` | idle, poluga, gleda za liftom |
+| Master izvedba iz vožnje | `MASTER` | cijela izvedba |
+| Silvestar 02: obilazak kabine | `S02_OBILAZAK` | sjedi, pa hod i skok po podu (spusti kontroler na pod) |
+
+Nakon toga strip možeš produljiti, usporiti ili presložiti u odjeljku **3. NLA Animation Stacker** ili u Blenderovom
+NLA editoru. Isti klipovi rade i na običnom mačku iz gumba **+ Spawn Black Cat** (isti rig).
+
+### Instalacija (ljudi)
+
+Potreban je **Blender 5.0 ili noviji** (datoteka je spremljena iz Blendera 5.3) i Python 3.
+
+```bash
+git clone https://github.com/timon2200/black-cat-studio.git
+```
+
+```bash
+cd black-cat-studio && python3 install_cat_studio.py
+```
+
+Zatim otvori `silvestar_studio.blend` i dopusti izvršavanje skripti (Allow Execution) da se pojavi N-panel.
+U bilo kojoj drugoj sceni: N-panel → **Black Cat Studio** → **Dodaj Silvestra u scenu**.
+
+### Poruka za tvog AI agenta (kopiraj i zalijepi)
+
+```text
+Kloniraj https://github.com/timon2200/black-cat-studio i postavi Silvestra u moj Blender (5.0+):
+
+1. git clone https://github.com/timon2200/black-cat-studio.git && cd black-cat-studio
+2. python3 install_cat_studio.py
+   (spoji silvestar_studio.blend i knjižnicu iz dijelova .partNN, instalira i uključi add-on black_cat_director)
+3. Pročitaj AGENTS.md, odjeljak "Silvestar". Ako imaš živi Blender (MCP execute_blender_code) ili Blender CLI, pokreni:
+     import sys; sys.path.insert(0, "<put do black-cat-studio>")
+     import black_cat_director as cd
+     cd.register()
+     ctrl = cd.append_silvestar(location=(0, 0, 0))
+     cd.apply_silvestar_preset(ctrl, "IDLE")      # ili PRICA, PREDSTAVA, SKOK_IDLE ...
+4. Provjera: Blender -b --factory-startup -P tests/test_silvestar.py  (mora ispisati SVI TESTOVI SILVESTRA PROŠLI)
+```
+
+### Python (SDK)
+
+```python
+import black_cat_director as cd
+
+ctrl = cd.append_silvestar(location=(0, 0, 0), rotation_z_deg=0)   # kolekcija SILVESTAR + sve akcije
+cd.apply_silvestar_preset(ctrl, "IDLE")                            # sjedi, diše, maše repom
+cd.apply_silvestar_preset(ctrl, "PREDSTAVA")                       # lizanje -> šok -> priča -> idle
+
+# vlastita kombinacija od istih klipova
+cd.set_cat_nla_sequence(ctrl, [
+    {"action": "Cat_Silvestar_Sjedi_Idle_Loop",  "repeat": 2, "blend": 0,  "mode": "FIXED"},
+    {"action": "Cat_Silvestar_Sjedi_Prica_Loop", "repeat": 1, "blend": 12, "mode": "FIXED"},
+    {"action": "Cat_Silvestar_Poluga",           "repeat": 1, "blend": 10, "mode": "FIXED"},
+], sync_curve=False)
+
+cd.ensure_silvestar_actions_loaded()        # samo akcije, bez mačka (za vlastitog Black Cat mačka)
+cd.list_silvestar_presets()                 # [(id, naziv), ...]
+```
+
+Napomene: mačak u mirovanju gleda niz lokalnu os −Y. Govor nije usklađen ni s jednom glasovnom snimkom (čeljust se miče
+u nekoliko fraza s pauzama). Pogled u „kameru” iz vožnje zapečen je u klipove priče i master izvedbe.
+Krzno se vidi samo u renderu; u viewportu je isključeno radi brzine.
 
 ---
 

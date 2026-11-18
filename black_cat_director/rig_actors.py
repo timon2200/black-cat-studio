@@ -35,17 +35,53 @@ from .database import ensure_cat_database_loaded
 # 1. CONTROLLER DISCOVERY & AUTO-REDIRECT HANDLER
 # ============================================================================
 
-def is_cat_controller(obj) -> bool:
+DEPRECATED_CAT_NAMES = {
+    "CTRL_Silvestar_Prednji",
+    "ARM_Silvestar_Prednji",
+    "MESH_Silvestar_02_Body",
+    "MESH_Silvestar_02_Fur",
+    "MESH_Silvestar_01_Fur",
+    "MESH_Silvestar_02_Fur.001",
+}
+
+
+def _is_in_template_collection(obj) -> bool:
     if not obj:
+        return True
+    if obj.name in DEPRECATED_CAT_NAMES or obj.get("cat_is_template", False):
+        return True
+    for col in getattr(obj, "users_collection", []):
+        if col.name in ("00_RIGGED_CAT_TEMPLATES", "99_ARCHIVE_HIDDEN"):
+            return True
+    return False
+
+
+def is_cat_controller(obj) -> bool:
+    if not obj or _is_in_template_collection(obj):
         return False
     return bool(
         obj.get("is_cat_controller", False)
+        or obj.get("cat_is_controller", False)
         or obj.name.startswith("CTRL_Cat")
+        or obj.name.startswith("CTRL_Silvestar")
     )
 
 
+def list_scene_cat_controllers(scene=None) -> list:
+    """Returns all active cat controllers (`CTRL_Silvestar_01`, `CTRL_Silvestar_02`, `CTRL_Cat_*`) in the scene."""
+    if scene is None:
+        try:
+            scene = bpy.context.scene
+        except Exception:
+            scene = None
+    objs = scene.objects if scene else bpy.data.objects
+    ctrls = [o for o in objs if is_cat_controller(o)]
+    ctrls.sort(key=lambda o: o.name)
+    return ctrls
+
+
 def find_cat_controller(obj=None):
-    """Finds the parent `CTRL_Cat_*` controller from any selected child mesh, armature, or scene fallback."""
+    """Finds the parent `CTRL_Cat_*` or `CTRL_Silvestar_*` controller from any selected child mesh, armature, curve, or scene fallback."""
     if obj is None:
         try:
             obj = bpy.context.active_object
@@ -60,15 +96,32 @@ def find_cat_controller(obj=None):
             return curr
         curr = curr.parent
 
-    if obj and obj.get("cat_ctrl_name"):
-        ctrl = bpy.data.objects.get(obj["cat_ctrl_name"])
-        if ctrl:
-            return ctrl
+    if obj:
+        ctrl_name = obj.get("cat_ctrl_name") or obj.get("cat_controller_name")
+        if ctrl_name:
+            ctrl = bpy.data.objects.get(str(ctrl_name))
+            if ctrl and is_cat_controller(ctrl):
+                return ctrl
+        if obj.type == "CURVE":
+            if obj.name == "Putanja_Silvestar_Platforma" and bpy.data.objects.get("CTRL_Silvestar_01"):
+                return bpy.data.objects.get("CTRL_Silvestar_01")
+            if obj.name == "Putanja_Silvestar_03" and bpy.data.objects.get("CTRL_Silvestar_02"):
+                return bpy.data.objects.get("CTRL_Silvestar_02")
+            for c in list_scene_cat_controllers():
+                if c.get("cat_attached_curve") == obj.name:
+                    return c
 
     try:
-        for o in bpy.context.scene.objects:
-            if is_cat_controller(o):
-                return o
+        scn = bpy.context.scene
+        if scn:
+            last_name = scn.get("cat_last_active_ctrl", "")
+            if last_name:
+                last_ctrl = bpy.data.objects.get(str(last_name))
+                if last_ctrl and is_cat_controller(last_ctrl):
+                    return last_ctrl
+        ctrls = list_scene_cat_controllers(scn)
+        if ctrls:
+            return ctrls[0]
     except Exception:
         pass
     return None
@@ -82,7 +135,7 @@ def find_cat_armature(ctrl_obj):
     if arm_name and bpy.data.objects.get(arm_name):
         return bpy.data.objects.get(arm_name)
     for ch in ctrl.children_recursive:
-        if ch.type == "ARMATURE":
+        if ch.type == "ARMATURE" and ch.name not in DEPRECATED_CAT_NAMES:
             return ch
     return None
 
@@ -97,15 +150,28 @@ def find_cat_meshes(ctrl_obj) -> dict:
     res = {"body": None, "fur": None}
     if not ctrl:
         return res
-    b_name = ctrl.get("cat_body_mesh_name", "")
-    f_name = ctrl.get("cat_fur_mesh_name", "")
-    if b_name:
-        res["body"] = bpy.data.objects.get(b_name)
-    if f_name:
-        res["fur"] = bpy.data.objects.get(f_name)
+    arm = find_cat_armature(ctrl)
+    b_name = (
+        ctrl.get("cat_body_mesh_name")
+        or ctrl.get("cat_body_name")
+        or (arm.get("cat_body_mesh_name") if arm else "")
+        or (arm.get("cat_body_name") if arm else "")
+        or ""
+    )
+    f_name = (
+        ctrl.get("cat_fur_mesh_name")
+        or ctrl.get("cat_fur_name")
+        or (arm.get("cat_fur_mesh_name") if arm else "")
+        or (arm.get("cat_fur_name") if arm else "")
+        or ""
+    )
+    if b_name and b_name not in DEPRECATED_CAT_NAMES:
+        res["body"] = bpy.data.objects.get(str(b_name))
+    if f_name and f_name not in DEPRECATED_CAT_NAMES:
+        res["fur"] = bpy.data.objects.get(str(f_name))
 
     for ch in ctrl.children_recursive:
-        if ch.type == "MESH":
+        if ch.type == "MESH" and ch.name not in DEPRECATED_CAT_NAMES:
             if "body" in ch.name.lower() or "feline" in ch.name.lower():
                 if not res["body"]:
                     res["body"] = ch

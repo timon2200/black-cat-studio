@@ -14,7 +14,9 @@ What this script does automatically:
   4. Detects all installed Blender 4.x / 5.x versions (macOS, Windows, Linux), installs
      `black_cat_director` into Blender's `scripts/addons/black_cat_director`, and enables
      the add-on in Blender User Preferences.
-  5. Generates a clean, general-purpose `black_cat_studio.blend` quickstart studio scene
+  5. Reassembles `silvestar_studio.blend` (Silvestar: collection SILVESTAR + final ride animations)
+     from `silvestar_studio.blend.part01` + `.part02`.
+  6. Generates a clean, general-purpose `black_cat_studio.blend` quickstart studio scene
      with `CTRL_Cat_01` (furless viewport for fast animation, 180,000-strand 3D fur in render),
      `Cat_Path_01` 3D Bezier S-curve, zero-slip NLA sequence, studio 3-point lighting,
      and the `Black Cat Studio` N-Panel active.
@@ -78,6 +80,28 @@ def ensure_library_blend() -> Path:
     return LIBRARY_BLEND
 
 
+SILVESTAR_BLEND = STUDIO_ROOT / "silvestar_studio.blend"
+
+
+def ensure_silvestar_blend() -> Path:
+    """Reassembles `silvestar_studio.blend` (Silvestar rig, fur and final animations) from `.part01` + `.part02`."""
+    if SILVESTAR_BLEND.is_file() and SILVESTAR_BLEND.stat().st_size > 20_000_000:
+        log(f"Found {SILVESTAR_BLEND.name} ({SILVESTAR_BLEND.stat().st_size / (1024*1024):.1f} MB)")
+        return SILVESTAR_BLEND
+    parts = sorted(STUDIO_ROOT.glob("silvestar_studio.blend.part*"))
+    if not parts:
+        log("silvestar_studio.blend parts not found; Silvestar clips will be unavailable.")
+        return SILVESTAR_BLEND
+    tmp_path = STUDIO_ROOT / "silvestar_studio.blend.assembling"
+    with open(tmp_path, "wb") as out_f:
+        for p in parts:
+            with open(p, "rb") as in_f:
+                shutil.copyfileobj(in_f, out_f, length=8 * 1024 * 1024)
+    tmp_path.replace(SILVESTAR_BLEND)
+    log(f"Assembled {SILVESTAR_BLEND.name} ({SILVESTAR_BLEND.stat().st_size / (1024*1024):.1f} MB) from {len(parts)} chunks")
+    return SILVESTAR_BLEND
+
+
 def write_studio_paths_config() -> Path:
     """Writes `_studio_paths.json` inside `black_cat_director/` so the installed add-on finds `database/`."""
     cfg_path = ADDON_SRC_DIR / "_studio_paths.json"
@@ -96,9 +120,12 @@ def build_addon_zip() -> Path:
         for file_path in sorted(ADDON_SRC_DIR.rglob("*")):
             if "__pycache__" in file_path.parts or file_path.suffix in (".pyc", ".pyo", ".DS_Store"):
                 continue
+            if file_path.name == "_studio_paths.json":
+                continue  # lokalne putanje ne idu u arhivu koja se dijeli
             if file_path.is_file():
                 arcname = Path("black_cat_director") / file_path.relative_to(ADDON_SRC_DIR)
                 zf.write(file_path, arcname.as_posix())
+    # (the add-on copied into Blender's addons folder keeps _studio_paths.json)
     log(f"Built Blender Add-on archive -> {ADDON_ZIP_PATH.name} ({ADDON_ZIP_PATH.stat().st_size / 1024:.1f} KB)")
     return ADDON_ZIP_PATH
 
@@ -273,12 +300,14 @@ def main():
     args = parser.parse_args()
 
     ensure_library_blend()
+    ensure_silvestar_blend()
     write_studio_paths_config()
     build_addon_zip()
     install_into_blender_addons()
     blender_bin = find_blender_executable()
     enable_addon_and_build_studio_blend(blender_bin, build_scene=not args.no_scene)
     log("Installation complete! Open Blender -> View3D Sidebar (N) -> 'Black Cat Studio'.")
+    log("Silvestar: open silvestar_studio.blend, or click 'Dodaj Silvestra u scenu' in the panel.")
 
 
 if __name__ == "__main__":

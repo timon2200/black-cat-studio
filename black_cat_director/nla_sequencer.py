@@ -35,12 +35,27 @@ from .database import set_action_cyclic_loop
 from .rig_actors import find_cat_controller, get_cat_armature_from_ctrl
 
 
+NON_SEQUENCE_NLA_PREFIXES = (
+    "CAT_Additive_PoseOffset",
+    "CAT_Stray_Biomechanics",
+    "CAT_AutoPlayback",
+    STRAY_BIOMECH_TRACK_NAME,
+)
+
+
 def get_cat_nla_sequence_tracks(arm_obj) -> list:
     if not arm_obj or not arm_obj.animation_data:
         return []
     return [
         tr for tr in arm_obj.animation_data.nla_tracks
-        if tr.name.startswith("CAT_Director_Sequence") or tr.name.startswith("CAT_Layer_")
+        if (
+            tr.name.startswith("CAT_Director_Sequence")
+            or tr.name.startswith("CAT_Layer_")
+            or (
+                len(tr.strips) > 0
+                and not any(tr.name.startswith(pfx) for pfx in NON_SEQUENCE_NLA_PREFIXES)
+            )
+        )
     ]
 
 
@@ -142,6 +157,9 @@ def get_cat_nla_sequence_clips(ctrl_obj) -> list:
             raw_items.append((tr, tr.strips[0]))
     raw_items.sort(key=lambda item: (int(round(item[1].frame_start)), item[0].name))
 
+    if len(stored_specs) != len(raw_items):
+        stored_specs = []
+
     from .locomotion import solve_cat_nla_curve_timing_plan
     plan = solve_cat_nla_curve_timing_plan(ctrl_obj, stored_specs) if stored_specs else {"clips": []}
     plan_clips = plan.get("clips", [])
@@ -153,6 +171,7 @@ def get_cat_nla_sequence_clips(ctrl_obj) -> list:
         act_name = s.action.name if s.action else p_info.get("action", "")
         act = bpy.data.actions.get(act_name)
         label = str(act.get("cat_label", act_name)) if act else act_name
+        is_loco = any(k in act_name.lower() for k in ("walk", "run", "jump"))
         clips.append({
             "index": idx,
             "track_name": tr.name,
@@ -166,8 +185,8 @@ def get_cat_nla_sequence_clips(ctrl_obj) -> list:
             "repeat": round(float(spec_info.get("repeat", s.repeat)), 2),
             "effective_repeat": round(float(p_info.get("effective_repeat", s.repeat)), 2),
             "blend_in": round(float(s.blend_in), 1),
-            "mode": str(spec_info.get("mode", p_info.get("mode", "AUTO"))),
-            "is_fill": bool(p_info.get("is_fill", False)),
+            "mode": str(spec_info.get("mode", p_info.get("mode", "FILL" if is_loco else "FIXED"))),
+            "is_fill": bool(p_info.get("is_fill", is_loco)),
             "speed_mps": float(p_info.get("speed_mps", 0.0)),
             "u_start_pct": float(p_info.get("u_start_pct", 0.0)),
             "u_end_pct": float(p_info.get("u_end_pct", 100.0)),
@@ -187,6 +206,20 @@ def sync_manual_nla_edits_to_specs(ctrl_obj, sync_curve: bool = True) -> tuple:
     arm_obj = get_cat_armature_from_ctrl(ctrl_obj)
     if not ctrl_obj or not arm_obj or not arm_obj.animation_data:
         return False, "No Black Cat actor or NLA data found."
+
+    if ctrl_obj.name in ("CTRL_Silvestar_01", "CTRL_Silvestar_02") and bpy.data.objects.get("CTRL_S1_Lift_Kabina"):
+        try:
+            import sys
+            from pathlib import Path
+            tools_dir = str(Path(__file__).resolve().parents[2] / "tools")
+            if tools_dir not in sys.path:
+                sys.path.insert(0, tools_dir)
+            import apply_s1_tunnel_curve_from_json as s1_eval
+            s1_data = s1_eval.ensure_s1_curve_json()
+            s1_eval.apply_s1_curve_data_to_blender_scene(s1_data, from_blender_nla=True)
+            return True, f"Synced S1 Tunnel NLA & Curve for {ctrl_obj.name}."
+        except Exception:
+            pass
 
     adt = arm_obj.animation_data
     raw_strips = []

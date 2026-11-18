@@ -20,10 +20,10 @@ quadruped black cat animation, featuring:
 bl_info = {
     "name": "Black Cat Animation Director Studio v2.0",
     "author": "Studio Varazdin",
-    "version": (2, 0, 0),
+    "version": (2, 1, 0),
     "blender": (4, 0, 0),
     "location": "View3D > Sidebar (N) > Black Cat Studio",
-    "description": "Rigged Black Cat Actor, 180k-Strand 3D Fur Coat (Furless Viewport / Full Render), Zero-Slip 3D Curve Locomotion, NLA Animation Stacker & Stray Biomechanics",
+    "description": "Silvestar (Carobni lift 2026) ready-made animations + Rigged Black Cat Actor, 180k-Strand 3D Fur Coat (Furless Viewport / Full Render), Zero-Slip 3D Curve Locomotion, NLA Animation Stacker & Stray Biomechanics",
     "category": "Animation",
 }
 
@@ -37,11 +37,13 @@ from . import (
     nla_sequencer,
     operators_ui,
     agent_sdk,
+    silvestar,
 )
 
 
 def reload_all_submodules():
     for mod in (
+        silvestar,
         constants,
         database,
         rig_actors,
@@ -77,6 +79,17 @@ from .agent_sdk import (
     toggle_cat_nla_clip_fill_mode,
     clear_cat_nla_sequence,
     detach_cat_from_curve,
+)
+
+from .silvestar import (
+    SILVESTAR_CATALOG,
+    SILVESTAR_PRESETS,
+    append_silvestar,
+    apply_silvestar_preset,
+    ensure_silvestar_actions_loaded,
+    find_silvestar,
+    get_silvestar_blend_path,
+    list_silvestar_presets,
 )
 
 

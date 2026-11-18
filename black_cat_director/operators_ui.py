@@ -77,6 +77,7 @@ from .rig_actors import (
     find_cat_controller,
     find_cat_meshes,
     is_cat_controller,
+    list_scene_cat_controllers,
     spawn_cat_actor,
 )
 
@@ -227,6 +228,18 @@ def _on_active_strip_props_changed(self, context):
     )
 
 
+def _find_fur_particle_modifier(body_obj):
+    if not body_obj:
+        return None
+    ps_mod = body_obj.modifiers.get("PS_Cat_FurCoat") or body_obj.modifiers.get("PS_Silvestar_FurCoat")
+    if not ps_mod:
+        for mod in body_obj.modifiers:
+            if mod.type == "PARTICLE_SYSTEM":
+                ps_mod = mod
+                break
+    return ps_mod
+
+
 def sync_ui_from_active_cat(ctrl_obj, scene=None):
     global _SYNCING_UI
     if not ctrl_obj:
@@ -238,16 +251,25 @@ def sync_ui_from_active_cat(ctrl_obj, scene=None):
 
     _SYNCING_UI = True
     try:
-        scene.cat_dir_char_scale = float(ctrl_obj.get("cat_char_scale", ctrl_obj.scale.x))
+        scene["cat_last_active_ctrl"] = ctrl_obj.name
+        scene.cat_dir_char_scale = float(ctrl_obj.get("cat_char_scale", max(0.15, ctrl_obj.scale.x)))
         scene.cat_dir_anim_speed = float(ctrl_obj.get("cat_anim_speed", 1.0))
         scene.cat_dir_frame_offset = int(ctrl_obj.get("cat_frame_offset", 0))
         scene.cat_dir_loop_anim = bool(ctrl_obj.get("cat_loop_anim", False))
         scene.cat_dir_curve_start_pct = float(ctrl_obj.get("cat_curve_start_pct", 0.0))
         scene.cat_dir_flip_curve = bool(ctrl_obj.get("cat_flip_curve_dir", False))
-        scene.cat_dir_look_mode = str(ctrl_obj.get("cat_look_mode", "PURE_BLACK"))
 
-        scene.cat_dir_fur_viewport = bool(ctrl_obj.get("cat_fur_viewport", False))
-        scene.cat_dir_fur_render = bool(ctrl_obj.get("cat_fur_render", True))
+        raw_look = str(ctrl_obj.get("cat_look_mode", "PURE_BLACK"))
+        if raw_look not in ("PURE_BLACK", "TUXEDO_BW"):
+            raw_look = "PURE_BLACK"
+        scene.cat_dir_look_mode = raw_look
+
+        meshes = find_cat_meshes(ctrl_obj)
+        ps_mod = _find_fur_particle_modifier(meshes.get("body"))
+        vp_fur = bool(ps_mod.show_viewport) if ps_mod else bool(ctrl_obj.get("cat_fur_viewport", False))
+        ren_fur = bool(ps_mod.show_render) if ps_mod else bool(ctrl_obj.get("cat_fur_render", True))
+        scene.cat_dir_fur_viewport = vp_fur
+        scene.cat_dir_fur_render = ren_fur
         scene.cat_dir_fur_length_mm = float(ctrl_obj.get("cat_fur_length_m", 0.018)) * 1000.0
         scene.cat_dir_fur_children = int(ctrl_obj.get("cat_fur_children", 36))
 
@@ -258,7 +280,14 @@ def sync_ui_from_active_cat(ctrl_obj, scene=None):
         scene.cat_dir_pose_tail_wag = float(ctrl_obj.get("cat_pose_tail_wag", 0.0))
         scene.cat_dir_look_at_weight = float(ctrl_obj.get("cat_look_at_target_weight", 0.0))
 
-        cname = ctrl_obj.get("cat_attached_curve", "")
+        cname = str(ctrl_obj.get("cat_attached_curve", "") or "")
+        if not cname:
+            if ctrl_obj.name == "CTRL_Silvestar_01" and bpy.data.objects.get("Putanja_Silvestar_Platforma"):
+                cname = "Putanja_Silvestar_Platforma"
+                ctrl_obj["cat_attached_curve"] = cname
+            elif ctrl_obj.name == "CTRL_Silvestar_02" and bpy.data.objects.get("Putanja_Silvestar_03"):
+                cname = "Putanja_Silvestar_03"
+                ctrl_obj["cat_attached_curve"] = cname
         if cname and bpy.data.objects.get(cname):
             scene.cat_dir_target_curve = bpy.data.objects.get(cname)
 
@@ -296,8 +325,8 @@ _LAST_ACTIVE_CAT_NAME = ""
 
 def _cat_selection_redirect_handler(scene, depsgraph=None):
     """
-    When the user clicks the cat's mesh (`MESH_Cat_01_Body`) in Object Mode,
-    automatically redirects selection to its ground-ring controller (`CTRL_Cat_01`)
+    When the user clicks the cat's mesh (`MESH_Cat_01_Body` / `MESH_Silvestar_*`) in Object Mode,
+    automatically redirects selection to its ground-ring controller (`CTRL_Cat_01` / `CTRL_Silvestar_*`)
     and syncs the N-Panel sliders.
     """
     global _LAST_ACTIVE_CAT_NAME
@@ -305,17 +334,26 @@ def _cat_selection_redirect_handler(scene, depsgraph=None):
         ctx = bpy.context
         if not ctx or not ctx.view_layer:
             return
+        if getattr(ctx, "screen", None) and getattr(ctx.screen, "is_animation_playing", False):
+            return
         act_obj = ctx.view_layer.objects.active
         if not act_obj or getattr(act_obj, "mode", "OBJECT") != "OBJECT":
             return
 
-        if act_obj.type == "MESH" and act_obj.get("cat_ctrl_name"):
-            ctrl = bpy.data.objects.get(act_obj["cat_ctrl_name"])
+        ctrl_name = act_obj.get("cat_ctrl_name") or act_obj.get("cat_controller_name")
+        if act_obj.type == "MESH" and ctrl_name:
+            ctrl = bpy.data.objects.get(str(ctrl_name))
             if ctrl and not ctrl.hide_viewport:
                 act_obj.select_set(False)
                 ctrl.select_set(True)
                 ctx.view_layer.objects.active = ctrl
                 act_obj = ctrl
+        elif act_obj.type == "ARMATURE" and ctrl_name:
+            ctrl = bpy.data.objects.get(str(ctrl_name))
+            if ctrl and is_cat_controller(ctrl) and ctrl.name != _LAST_ACTIVE_CAT_NAME:
+                _LAST_ACTIVE_CAT_NAME = ctrl.name
+                sync_ui_from_active_cat(ctrl, scene)
+                return
 
         if is_cat_controller(act_obj) and act_obj.name != _LAST_ACTIVE_CAT_NAME:
             _LAST_ACTIVE_CAT_NAME = act_obj.name
@@ -325,8 +363,65 @@ def _cat_selection_redirect_handler(scene, depsgraph=None):
 
 
 # ============================================================================
-# 3. OPERATORS — SPAWN, FUR COAT, CURVE DRAWING & NLA SEQUENCER
+# 3. OPERATORS — SPAWN, SELECT, FUR COAT, CURVE DRAWING & NLA SEQUENCER
 # ============================================================================
+
+class CAT_OT_select_cat_actor(Operator):
+    bl_idname = "cat_director.select_cat_actor"
+    bl_label = "Select Black Cat Actor"
+    bl_description = "Select and unhide this Black Cat actor in the 3D Viewport and sync its NLA & Curve controls"
+    bl_options = {"REGISTER", "UNDO"}
+
+    actor_name: StringProperty(name="Actor Name", default="")
+    jump_to_active_frame: BoolProperty(name="Jump to Active Frame", default=True)
+
+    def execute(self, context):
+        global _LAST_ACTIVE_CAT_NAME
+        ctrl = bpy.data.objects.get(self.actor_name)
+        if not ctrl or not is_cat_controller(ctrl):
+            self.report({"WARNING"}, f"Cat controller '{self.actor_name}' not found.")
+            return {"CANCELLED"}
+
+        arm = find_cat_armature(ctrl)
+        meshes = find_cat_meshes(ctrl)
+        body_m = meshes.get("body")
+
+        for obj in (ctrl, arm, body_m):
+            if obj is not None:
+                obj.hide_viewport = False
+                try:
+                    obj.hide_set(False)
+                except Exception:
+                    pass
+
+        if max(ctrl.scale) < 0.01:
+            ctrl.scale = (1.0, 1.0, 1.0)
+
+        try:
+            if context.active_object and getattr(context.active_object, "mode", "OBJECT") != "OBJECT":
+                bpy.ops.object.mode_set(mode="OBJECT")
+        except Exception:
+            pass
+
+        for o in list(context.selected_objects):
+            o.select_set(False)
+        ctrl.select_set(True)
+        context.view_layer.objects.active = ctrl
+
+        scn = context.scene
+        if self.jump_to_active_frame and scn:
+            clips = get_cat_nla_sequence_clips(ctrl)
+            if clips:
+                f_min = clips[0]["frame_start"]
+                f_max = clips[-1]["frame_end"]
+                if scn.frame_current < f_min or scn.frame_current > f_max:
+                    scn.frame_set(max(1, f_min + 10))
+
+        _LAST_ACTIVE_CAT_NAME = ctrl.name
+        sync_ui_from_active_cat(ctrl, scn)
+        self.report({"INFO"}, f"Active Black Cat: {ctrl.name}")
+        return {"FINISHED"}
+
 
 class CAT_OT_load_database(Operator):
     bl_idname = "cat_director.load_database"
@@ -402,7 +497,9 @@ class CAT_OT_toggle_viewport_fur(Operator):
         if not ctrl:
             self.report({"WARNING"}, "Select a Black Cat actor first.")
             return {"CANCELLED"}
-        cur = bool(ctrl.get("cat_fur_viewport", False))
+        meshes = find_cat_meshes(ctrl)
+        ps_mod = _find_fur_particle_modifier(meshes.get("body"))
+        cur = bool(ps_mod.show_viewport) if ps_mod else bool(ctrl.get("cat_fur_viewport", False))
         res = configure_cat_fur_coat(ctrl, viewport_fur=not cur)
         sync_ui_from_active_cat(ctrl, context.scene)
         state_str = "ON" if res.get("viewport_fur") else "OFF (Fast Animation Mode)"
@@ -421,7 +518,9 @@ class CAT_OT_toggle_render_fur(Operator):
         if not ctrl:
             self.report({"WARNING"}, "Select a Black Cat actor first.")
             return {"CANCELLED"}
-        cur = bool(ctrl.get("cat_fur_render", True))
+        meshes = find_cat_meshes(ctrl)
+        ps_mod = _find_fur_particle_modifier(meshes.get("body"))
+        cur = bool(ps_mod.show_render) if ps_mod else bool(ctrl.get("cat_fur_render", True))
         res = configure_cat_fur_coat(ctrl, render_fur=not cur)
         sync_ui_from_active_cat(ctrl, context.scene)
         self.report({"INFO"}, f"Render 3D Fur: {'ON' if res.get('render_fur') else 'OFF'} ({res.get('total_strands', 180000):,} strands).")
@@ -476,6 +575,65 @@ class CAT_OT_apply_preset_sequence(Operator):
             ok, msg = rebuild_cat_nla_sequence_from_specs(ctrl, PRESET_SEATED_GROOMING_IDLE, sync_curve=False)
 
         sync_ui_from_active_cat(ctrl, scn)
+        self.report({"INFO" if ok else "WARNING"}, msg)
+        return {"FINISHED"}
+
+
+class CAT_OT_silvestar_append(Operator):
+    bl_idname = "cat_director.silvestar_append"
+    bl_label = "Dodaj Silvestra u scenu"
+    bl_description = "Dodaje kolekciju SILVESTAR (rig, tijelo, krzno) i sve njegove animacije iz silvestar_studio.blend"
+    bl_options = {"REGISTER", "UNDO"}
+
+    def execute(self, context):
+        from .silvestar import append_silvestar
+        try:
+            ctrl = append_silvestar()
+        except Exception as e:
+            self.report({"ERROR"}, str(e))
+            return {"CANCELLED"}
+        if ctrl:
+            for o in context.selected_objects:
+                o.select_set(False)
+            try:
+                ctrl.select_set(True)
+                context.view_layer.objects.active = ctrl
+            except Exception:
+                pass
+            sync_ui_from_active_cat(ctrl, context.scene)
+        self.report({"INFO"}, "Silvestar je u sceni (kolekcija SILVESTAR).")
+        return {"FINISHED"}
+
+
+class CAT_OT_silvestar_load_clips(Operator):
+    bl_idname = "cat_director.silvestar_load_clips"
+    bl_label = "Učitaj Silvestrove animacije"
+    bl_description = "Učitava Silvestrove akcije u ovu datoteku, pa se pojave u izborniku Clip i rade na svakom Black Cat mačku"
+    bl_options = {"REGISTER", "UNDO"}
+
+    def execute(self, context):
+        from .silvestar import ensure_silvestar_actions_loaded
+        names = ensure_silvestar_actions_loaded()
+        self.report({"INFO" if names else "WARNING"}, f"Silvestrove animacije: {len(names)}")
+        return {"FINISHED"}
+
+
+class CAT_OT_silvestar_preset(Operator):
+    bl_idname = "cat_director.silvestar_preset"
+    bl_label = "Silvestar animacija"
+    bl_description = "Složi gotovu Silvestrovu animaciju ili kombinaciju u NLA aktivnog mačka"
+    bl_options = {"REGISTER", "UNDO"}
+
+    preset_id: StringProperty(name="Kombinacija", default="IDLE")
+
+    def execute(self, context):
+        from .silvestar import apply_silvestar_preset
+        ctrl = find_cat_controller(context.active_object)
+        ok, msg = apply_silvestar_preset(ctrl, self.preset_id)
+        ctrl = ctrl or find_cat_controller(context.active_object)
+        if ctrl:
+            sync_ui_from_active_cat(ctrl, context.scene)
+        context.scene.frame_set(1)
         self.report({"INFO" if ok else "WARNING"}, msg)
         return {"FINISHED"}
 
@@ -1118,13 +1276,53 @@ class VIEW3D_PT_black_cat_director_studio(Panel):
         row_spawn.scale_y = 1.35
         row_spawn.operator("cat_director.spawn_cat", text="+ Spawn Black Cat", icon="ADD")
 
+        scene_cats = list_scene_cat_controllers(scn)
+        if scene_cats:
+            cats_box = box_actor.box()
+            cats_box.label(text=f"Scene Cats ({len(scene_cats)} found — Click to Select):", icon="OUTLINER_OB_EMPTY")
+            col_cats = cats_box.column(align=True)
+            for c_item in scene_cats:
+                is_cur = (ctrl is not None and c_item.name == ctrl.name)
+                if c_item.name == "CTRL_Silvestar_01":
+                    c_label = f"{c_item.name} (Station / Brass Lever)"
+                elif c_item.name == "CTRL_Silvestar_02":
+                    c_label = f"{c_item.name} (Front of Lift / Path 03)"
+                else:
+                    c_label = c_item.name
+                row_ci = col_cats.row(align=True)
+                row_ci.scale_y = 1.2
+                op_sc = row_ci.operator(
+                    "cat_director.select_cat_actor",
+                    text=c_label,
+                    depress=is_cur,
+                    icon="RADIOBUT_ON" if is_cur else "RADIOBUT_OFF",
+                )
+                op_sc.actor_name = c_item.name
+                op_sc.jump_to_active_frame = True
+
+        # SILVESTAR: gotove animacije i kombinacije (picker)
+        from .silvestar import SILVESTAR_CATALOG, find_silvestar, list_silvestar_presets
+        box_sil = layout.box()
+        box_sil.label(text="Silvestar: gotove animacije", icon="OUTLINER_OB_ARMATURE")
+        n_sil = sum(1 for n in SILVESTAR_CATALOG if n in bpy.data.actions)
+        if find_silvestar() is None:
+            box_sil.operator("cat_director.silvestar_append", text="Dodaj Silvestra u scenu", icon="IMPORT")
+        if n_sil < len(SILVESTAR_CATALOG):
+            box_sil.operator("cat_director.silvestar_load_clips", text=f"Učitaj animacije ({n_sil}/{len(SILVESTAR_CATALOG)})", icon="ACTION")
+        col_sil = box_sil.column(align=True)
+        col_sil.enabled = n_sil > 0
+        for pid, plabel in list_silvestar_presets():
+            op_s = col_sil.operator("cat_director.silvestar_preset", text=plabel, icon="PLAY")
+            op_s.preset_id = pid
+        box_sil.label(text="Pojedini klipovi su i u izborniku Clip ([SILV]).", icon="INFO")
+
         if not ctrl:
             box_actor.label(text="Click '+ Spawn Black Cat' or select a cat.", icon="INFO")
             return
 
         meshes = find_cat_meshes(ctrl)
         body_m = meshes.get("body")
-        ps_mod = body_m.modifiers.get("PS_Cat_FurCoat") if body_m else None
+        ps_mod = _find_fur_particle_modifier(body_m)
         vp_fur_on = bool(ps_mod.show_viewport) if ps_mod else bool(ctrl.get("cat_fur_viewport", False))
         ren_fur_on = bool(ps_mod.show_render) if ps_mod else bool(ctrl.get("cat_fur_render", True))
 
@@ -1213,6 +1411,8 @@ class VIEW3D_PT_black_cat_director_studio(Panel):
         op_tr = row_tilt.operator("cat_director.adjust_curve_point_tilt", text="+15°")
         op_tr.delta_deg = 15.0
         op_tr.reset_zero = False
+
+
 
         # --------------------------------------------------------------------
         # SECTION 3: NLA ANIMATION STACKER & EDITOR (ZERO-SLIP WALKING)
@@ -1373,12 +1573,16 @@ class VIEW3D_PT_black_cat_director_studio(Panel):
 # ============================================================================
 
 CLASSES = (
+    CAT_OT_select_cat_actor,
     CAT_OT_load_database,
     CAT_OT_spawn_cat,
     CAT_OT_toggle_viewport_fur,
     CAT_OT_toggle_render_fur,
     CAT_OT_apply_preset_sequence,
     CAT_OT_apply_single_action,
+    CAT_OT_silvestar_append,
+    CAT_OT_silvestar_load_clips,
+    CAT_OT_silvestar_preset,
     CAT_OT_nla_add_clip,
     CAT_OT_nla_select_strip,
     CAT_OT_nla_edit_strip,
